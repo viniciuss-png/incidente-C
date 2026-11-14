@@ -1,0 +1,100 @@
+COMANDOS UTILIZADOS — INCIDENTE C
+Cenário: Split-brain após ataque de rede
+Ambiente: Windows PowerShell, Docker Compose e PostgreSQL 16
+
+Observação:
+Este arquivo reúne os comandos que constam no histórico do laboratório e nas anotações do experimento. Os comandos estão organizados por etapa. Consultas SQL foram executadas pelo psql dentro dos containers.
+
+1. ACESSAR A PASTA DO LABORATÓRIO E INICIAR OS CONTAINERS
+
+cd "$HOME\Desktop\lab1"
+docker compose start primary
+docker compose ps
+Get-Content .\docker-compose.yml
+
+2. PREPARAR / RECRIAR A RÉPLICA
+
+docker compose stop replica
+docker compose rm -f replica
+docker volume rm lab1_replica_data
+docker compose up -d replica
+
+3. VERIFICAR O ESTADO DOS BANCOS E A REPLICAÇÃO
+
+docker compose exec primary psql -U postgres -c "SELECT pg_is_in_recovery();"
+
+docker compose exec replica psql -U postgres -c "SELECT pg_is_in_recovery();"
+
+docker compose exec primary psql -U postgres -c "SELECT client_addr, state, sync_state FROM pg_stat_replication;"
+
+4. PREPARAR A MEDIÇÃO E PROMOVER A RÉPLICA
+
+$inicio = Get-Date
+
+docker compose exec replica psql -U postgres -c "SELECT pg_promote();"
+
+5. SIMULAR ESCRITAS NOS DOIS PRIMÁRIOS
+
+No antigo primário:
+
+docker compose exec primary psql -U postgres -c "INSERT INTO eventos SELECT FROM generate_series(1, 10);"
+
+Na réplica promovida (novo primário):
+
+docker compose exec replica psql -U postgres -c "INSERT INTO eventos SELECT FROM generate_series(1, 7);"
+
+6. COMPARAR A QUANTIDADE DE REGISTROS
+
+No antigo primário:
+
+docker compose exec primary psql -U postgres -c "SELECT max(id), count(*) FROM eventos;"
+
+No novo primário:
+
+docker compose exec replica psql -U postgres -c "SELECT max(id), count(*) FROM eventos;"
+
+7. VERIFICAR A DIVERGÊNCIA DOS REGISTROS
+
+A consulta abaixo foi usada para comparar os registros posteriores ao momento da promoção (T_PROMOCAO), observando os horários registrados:
+
+SELECT id, ts FROM eventos WHERE ts > T_PROMOCAO ORDER BY id;
+
+Observação: T_PROMOCAO representa o horário de referência registrado durante o experimento; o valor foi utilizado na comparação dos resultados dos dois bancos.
+
+8. ISOLAR O ANTIGO PRIMÁRIO E VALIDAR O NOVO
+
+docker compose stop primary
+
+docker compose exec replica psql -U postgres -c "SELECT pg_is_in_recovery();"
+
+docker compose exec replica psql -U postgres -c "SELECT max(id), count(*) FROM eventos;"
+
+9. FINALIZAR A MEDIÇÃO DO RTO NO POWERSHELL
+
+$fim = Get-Date
+$rto = $fim - $inicio
+$rto.TotalSeconds
+
+10. COMANDOS GIT UTILIZADOS PARA PUBLICAR O RELATÓRIO
+
+cd "$HOME\Desktop\incidente-C"
+git init
+New-Item README.md -ItemType File
+git add README.md
+git commit -m "chore: inicia relatorio do incidente C"
+
+Depois de preencher o README:
+
+git add README.md
+git commit -m "docs: adiciona relatorio do incidente C"
+
+Conectar ao repositório remoto e publicar:
+
+git remote add origin https://github.com/viniciuss-png/incidente-C.git
+git branch -M main
+git push -u origin main
+
+Repositório:
+https://github.com/viniciuss-png/incidente-C
+
+FIM
