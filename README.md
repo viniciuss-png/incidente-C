@@ -1,9 +1,7 @@
 Análise de split-brain — Incidente C
 
 
-
 1\. Identificação
-
 
 
 \- Autor(es): Leiliane Flávia Travasso Oliveira; José Vinícius Cunha da Silva
@@ -13,9 +11,7 @@ Análise de split-brain — Incidente C
 \- Caminho usado: Docker (docker compose), PostgreSQL 16, primário na porta 5442 e réplica na porta 5443, comandos executados pelo PowerShell.
 
 
-
 2\. Resumo do incidente
-
 
 
 Simulamos uma situação em que o primário fica inacessível, mas continua funcionando e aceitando gravações. Promovemos a réplica para assumir o papel de novo primário, porém o antigo também continuou aceitando escritas. Com isso, os dois bancos passaram a trabalhar de forma independente, causando split-brain. Inserimos dados diferentes nos dois lados, comparamos os resultados e, por fim, desligamos o antigo primário para manter apenas um banco principal ativo.
