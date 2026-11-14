@@ -5,7 +5,6 @@ Análise de split-brain — Incidente C
 1\. Identificação
 
 
-
 \- Autor(es): Leiliane Flávia Travasso Oliveira; José Vinícius Cunha da Silva
 
 \- Cenário: C — Split-brain após ataque de rede.
